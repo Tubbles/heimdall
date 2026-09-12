@@ -1,0 +1,9 @@
+[submodule "module/waylib"]
+	path = module/waylib
+	url = git@github.com:Tubbles/odin-waylib.git
+[submodule "module/wasm-bindings"]
+	path = module/wasm-bindings
+	url = git@github.com:Tubbles/odin-wasm-bindings.git
+[submodule "module/wasmtime-bindings"]
+	path = module/wasmtime-bindings
+	url = git@github.com:Tubbles/odin-wasmtime-bindings.git

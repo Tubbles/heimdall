@@ -31,13 +31,15 @@ player_update :: proc() {
 }
 
 player_draw :: proc() {
-	rl.DrawRectangleV(player.transform.translation.xy, player.transform.scale.xy, player.color)
+	rl.DrawRectangleV(
+		player.transform.translation.xy - player.transform.scale.xy / 2,
+		player.transform.scale.xy,
+		player.color,
+	)
 
 	if input.action_held {
 		start_position: rl.Vector2 = player.transform.translation.xy
-		// start_position: rl.Vector2 = {0.0, 0.0}
 		end_position: rl.Vector2 = {250.0, 250.0}
-		// end_position: rl.Vector2 = {0.0, 0.0}
-		rl.DrawLineEx(start_position, end_position, thick=2.0, color=rl.RED)
+		rl.DrawLineEx(start_position, end_position, thick = 2.0, color = rl.RED)
 	}
 }

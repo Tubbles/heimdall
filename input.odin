@@ -94,8 +94,64 @@ input_save_keybindings :: proc() {
 	}
 }
 
+input_handle_digital_axis :: proc(inc_bind: Keybind, dec_bind: Keybind, ptr: ^f32) {
+	inc: bool
+	dec: bool
+
+	switch bind in inc_bind {
+	case rl.KeyboardKey:
+		inc = rl.IsKeyDown(bind)
+	case [2]rl.KeyboardKey:
+		inc = rl.IsKeyDown(bind[0]) || rl.IsKeyDown(bind[1])
+	case [3]rl.KeyboardKey:
+		inc = rl.IsKeyDown(bind[0]) || rl.IsKeyDown(bind[1]) || rl.IsKeyDown(bind[2])
+	}
+
+	switch bind in dec_bind {
+	case rl.KeyboardKey:
+		dec = rl.IsKeyDown(bind)
+	case [2]rl.KeyboardKey:
+		dec = rl.IsKeyDown(bind[0]) || rl.IsKeyDown(bind[1])
+	case [3]rl.KeyboardKey:
+		dec = rl.IsKeyDown(bind[0]) || rl.IsKeyDown(bind[1]) || rl.IsKeyDown(bind[2])
+	}
+
+	ptr^ = inc ? 1.0 : 0.0
+	ptr^ += dec ? -1.0 : 0.0
+}
+
+input_handle_key_pressed :: proc(bind: Keybind, ptr: ^bool) {
+	pressed: bool
+
+	switch bind in bind {
+	case rl.KeyboardKey:
+		pressed = rl.IsKeyPressed(bind)
+	case [2]rl.KeyboardKey:
+		pressed = rl.IsKeyPressed(bind[0]) || rl.IsKeyPressed(bind[1])
+	case [3]rl.KeyboardKey:
+		pressed = rl.IsKeyPressed(bind[0]) || rl.IsKeyPressed(bind[1]) || rl.IsKeyPressed(bind[2])
+	}
+
+	ptr^ = pressed
+}
+
+input_handle_key_held :: proc(bind: Keybind, ptr: ^bool) {
+	held: bool
+
+	switch bind in bind {
+	case rl.KeyboardKey:
+		held = rl.IsKeyDown(bind)
+	case [2]rl.KeyboardKey:
+		held = rl.IsKeyDown(bind[0]) || rl.IsKeyDown(bind[1])
+	case [3]rl.KeyboardKey:
+		held = rl.IsKeyDown(bind[0]) || rl.IsKeyDown(bind[1]) || rl.IsKeyDown(bind[2])
+	}
+
+	ptr^ = held
+}
+
 input_update :: proc() {
-	// Axes
+	// Digital axis
 	{
 		mappings := []struct {
 			inc_bind: Keybind,
@@ -107,35 +163,7 @@ input_update :: proc() {
 		}
 
 		for mapping in mappings {
-			inc: bool
-			dec: bool
-
-			switch bind in mapping.inc_bind {
-			case rl.KeyboardKey:
-				inc = rl.IsKeyDown(bind)
-			case [2]rl.KeyboardKey:
-				inc = rl.IsKeyDown(bind[0]) || rl.IsKeyDown(bind[1])
-			case [3]rl.KeyboardKey:
-				inc =
-					rl.IsKeyDown(bind[0]) ||
-					rl.IsKeyDown(bind[1]) ||
-					rl.IsKeyDown(bind[2])
-			}
-
-			switch bind in mapping.dec_bind {
-			case rl.KeyboardKey:
-				dec = rl.IsKeyDown(bind)
-			case [2]rl.KeyboardKey:
-				dec = rl.IsKeyDown(bind[0]) || rl.IsKeyDown(bind[1])
-			case [3]rl.KeyboardKey:
-				dec =
-					rl.IsKeyDown(bind[0]) ||
-					rl.IsKeyDown(bind[1]) ||
-					rl.IsKeyDown(bind[2])
-			}
-
-			mapping.ptr^ = inc ? 1.0 : 0.0
-			mapping.ptr^ += dec ? -1.0 : 0.0
+			input_handle_digital_axis(mapping.inc_bind, mapping.dec_bind, mapping.ptr)
 		}
 	}
 
@@ -152,18 +180,7 @@ input_update :: proc() {
 		}
 
 		for mapping in mappings {
-			pressed: bool
-
-			switch bind in mapping.bind {
-			case rl.KeyboardKey:
-				pressed = rl.IsKeyPressed(bind)
-			case [2]rl.KeyboardKey:
-				pressed = rl.IsKeyPressed(bind[0]) || rl.IsKeyPressed(bind[1])
-			case [3]rl.KeyboardKey:
-				pressed = rl.IsKeyPressed(bind[0]) || rl.IsKeyPressed(bind[1]) || rl.IsKeyPressed(bind[2])
-			}
-
-			mapping.ptr^ = pressed
+			input_handle_key_pressed(mapping.bind, mapping.ptr)
 		}
 	}
 
@@ -172,23 +189,10 @@ input_update :: proc() {
 		mappings := []struct {
 			bind: Keybind,
 			ptr:  ^bool,
-		} {
-			{keybindings.action, &input.action_held},
-		}
+		}{{keybindings.action, &input.action_held}}
 
 		for mapping in mappings {
-			held: bool
-
-			switch bind in mapping.bind {
-			case rl.KeyboardKey:
-				held = rl.IsKeyDown(bind)
-			case [2]rl.KeyboardKey:
-				held = rl.IsKeyDown(bind[0]) || rl.IsKeyDown(bind[1])
-			case [3]rl.KeyboardKey:
-				held = rl.IsKeyDown(bind[0]) || rl.IsKeyDown(bind[1]) || rl.IsKeyDown(bind[2])
-			}
-
-			mapping.ptr^ = held
+			input_handle_key_held(mapping.bind, mapping.ptr)
 		}
 	}
 
