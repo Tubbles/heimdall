@@ -9,6 +9,8 @@ plugin_filenames := []string{"plugin/build/plugin.wasm", "plugin/build/plugin2.w
 
 second_plugin_loaded: bool
 
+background_color := rl.DARKGREEN
+
 init_window :: proc() {
 	rl.InitWindow(500, 500, "Odin game")
 	rl.ToggleFullscreen()
@@ -36,7 +38,7 @@ update :: proc() {
 
 draw :: proc() {
 	rl.BeginDrawing()
-	rl.ClearBackground(rl.DARKGREEN)
+	rl.ClearBackground(background_color)
 	player_draw()
 	wasm_draw()
 	rl.EndDrawing()

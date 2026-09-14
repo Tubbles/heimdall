@@ -10,7 +10,7 @@ package plugin2
 import "base:runtime"
 
 import wl "module:waylib"
-import "engine:engine"
+import "heimdall:heimdall"
 
 ORBIT_CENTER :: wl.Vector2{250, 250}
 ORBIT_RADIUS :: 100.0
@@ -28,7 +28,7 @@ init :: proc "c" () {
 	context = runtime.default_context()
 	runtime._startup_runtime()
 	marker = {}
-	engine.log(.INFO, "hello from plugin")
+	heimdall.log(.INFO, "hello from plugin")
 }
 
 @(export)
@@ -41,5 +41,5 @@ update :: proc "c" (delta_time: f32) {
 @(export)
 draw :: proc "c" () {
 	context = runtime.default_context()
-	engine.DrawRectangleV(marker.position - MARKER_SIZE / 2, {MARKER_SIZE, MARKER_SIZE}, wl.YELLOW)
+	heimdall.DrawRectangleV(marker.position - MARKER_SIZE / 2, {MARKER_SIZE, MARKER_SIZE}, wl.YELLOW)
 }
