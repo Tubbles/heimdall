@@ -1,7 +1,7 @@
 .PHONY: all
 all:
 	mkdir -p build
-	odin build . -collection:module=module -out:build/odin_game
+	odin build src -collection:module=module -out:build/odin_game
 
 .PHONY: plugin
 plugin:
@@ -9,7 +9,7 @@ plugin:
 
 .PHONY: run
 run: plugin
-	odin run . -collection:module=module
+	odin run src -collection:module=module
 
 .PHONY: clean
 clean: clean-plugin

@@ -1,5 +1,6 @@
-package odin_game
+package heimdall
 
+import "./log"
 import "core:encoding/json"
 import "core:os"
 import "core:slice"
@@ -48,16 +49,21 @@ Input_State :: struct {
 
 input: Input_State
 
+input_init :: proc() {
+	rl.SetExitKey(.KEY_NULL)
+	input_load_keybindings()
+}
+
 input_load_keybindings :: proc() {
 	if json_data, err := os.read_entire_file(KEYBINDINGS_FILENAME, context.temp_allocator);
 	   err == nil {
 		if err := json.unmarshal(json_data, &keybindings, spec = JSON_SPEC); err == nil {
-			debug("Loaded keybindings: {:v}", keybindings)
+			log.debug("Loaded keybindings: {:v}", keybindings)
 		} else {
-			warning("Failed to unmarshal JSON! {:v}", err)
+			log.warning("Failed to unmarshal JSON! {:v}", err)
 		}
 	} else {
-		warning("Failed to read keybindings! {:v}", err)
+		log.warning("Failed to read keybindings! {:v}", err)
 	}
 }
 
@@ -74,7 +80,7 @@ input_save_keybindings :: proc() {
 		allocator = context.temp_allocator,
 	)
 	if marshal_err != nil {
-		warning("Couldn't marshal struct! {:v}", marshal_err)
+		log.warning("Couldn't marshal struct! {:v}", marshal_err)
 		return
 	}
 
@@ -90,7 +96,7 @@ input_save_keybindings :: proc() {
 	}
 
 	if write_err := os.write_entire_file(KEYBINDINGS_FILENAME, json_data); write_err != nil {
-		warning("Couldn't write file! {:v}", write_err)
+		log.warning("Couldn't write file! {:v}", write_err)
 	}
 }
 

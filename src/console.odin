@@ -1,0 +1,3 @@
+package heimdall
+
+console: bool

@@ -1,9 +1,13 @@
-package odin_game
+package heimdall_log
 
 import "core:fmt"
 import "core:strings"
 
 import rl "vendor:raylib"
+
+init :: proc() {
+	rl.SetTraceLogLevel(.DEBUG)
+}
 
 log :: proc(level: rl.TraceLogLevel, format: string, args: ..any) {
 	string_builder: strings.Builder

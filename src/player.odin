@@ -1,4 +1,4 @@
-package odin_game
+package heimdall
 
 import rl "vendor:raylib"
 
