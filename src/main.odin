@@ -46,6 +46,7 @@ draw :: proc() {
 exit :: proc() {
 	input_save_keybindings()
 	plugins.exit()
+	render_exit()
 }
 
 main :: proc() {

@@ -1,17 +1,33 @@
 package heimdall
 
+import "./log"
 import "core:c"
+import "core:encoding/json"
+import "core:os"
+import "core:slice"
 import rl "vendor:raylib"
+
+RENDER_JSON_SPEC :: json.Specification.SJSON
+RENDER_SETTINGS_FILENAME :: "render.sjson"
+
+Render_Settings :: struct {
+	target_fps: int,
+}
+
+render_settings := Render_Settings {
+	target_fps = 120,
+}
 
 target: rl.RenderTexture2D
 
 source_rect, dest_rect: rl.Rectangle
 
 render_init :: proc() {
+	render_load_settings()
 	// rl.SetConfigFlags({.VSYNC_HINT, .BORDERLESS_WINDOWED_MODE, .FULLSCREEN_MODE, .WINDOW_UNDECORATED})
 	rl.SetConfigFlags({.BORDERLESS_WINDOWED_MODE, .FULLSCREEN_MODE, .WINDOW_UNDECORATED})
 	rl.InitWindow(1920, 1080, "Heimdall")
-	rl.SetTargetFPS(120)
+	rl.SetTargetFPS(i32(render_settings.target_fps))
 
 	rl.HideCursor()
 
@@ -25,9 +41,21 @@ render_init :: proc() {
 	target = rl.LoadRenderTexture(c.int(source_rect.width), -c.int(source_rect.height))
 }
 
+render_exit :: proc() {
+	render_save_settings()
+}
+
 // render_update :: proc() {
 // 	//
 // }
+
+render_load_settings :: proc() {
+	config_load(RENDER_SETTINGS_FILENAME, &render_settings)
+}
+
+render_save_settings :: proc() {
+	config_save(RENDER_SETTINGS_FILENAME, render_settings)
+}
 
 render_begin :: proc() {
 	rl.BeginTextureMode(target)
@@ -60,4 +88,9 @@ render_set_rectangles :: proc(
 	dest_rect^.y = f32(int(((f32(screen_height) - (f32(game_height) * resizeRatio)) * 0.5)))
 	dest_rect^.width = f32(int((f32(game_width) * resizeRatio)))
 	dest_rect^.height = f32(int((f32(game_height) * resizeRatio)))
+}
+
+render_set_target_fps :: proc(fps: int) {
+	render_settings.target_fps = fps
+	rl.SetTargetFPS(i32(render_settings.target_fps))
 }

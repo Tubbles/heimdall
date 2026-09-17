@@ -7,7 +7,7 @@ import "core:slice"
 
 import rl "vendor:raylib"
 
-JSON_SPEC :: json.Specification.SJSON
+KEYBINDINGS_JSON_SPEC :: json.Specification.SJSON
 KEYBINDINGS_FILENAME :: "keybindings.sjson"
 
 Keybind :: union {
@@ -55,49 +55,11 @@ input_init :: proc() {
 }
 
 input_load_keybindings :: proc() {
-	if json_data, err := os.read_entire_file(KEYBINDINGS_FILENAME, context.temp_allocator);
-	   err == nil {
-		if err := json.unmarshal(json_data, &keybindings, spec = JSON_SPEC); err == nil {
-			log.debug("Loaded keybindings: {:v}", keybindings)
-		} else {
-			log.warning("Failed to unmarshal JSON! {:v}", err)
-		}
-	} else {
-		log.warning("Failed to read keybindings! {:v}", err)
-	}
+	config_load(KEYBINDINGS_FILENAME, &keybindings)
 }
 
 input_save_keybindings :: proc() {
-	opt: json.Marshal_Options = {
-		spec           = JSON_SPEC,
-		pretty         = true,
-		use_enum_names = true,
-	}
-
-	json_data, marshal_err := json.marshal(
-		keybindings,
-		opt = opt,
-		allocator = context.temp_allocator,
-	)
-	if marshal_err != nil {
-		log.warning("Couldn't marshal struct! {:v}", marshal_err)
-		return
-	}
-
-	// append a newline
-	json_data = slice.concatenate([][]byte{json_data, transmute([]byte)string("\n")})
-
-	// skip the write if the existing file already matches exactly what we would write,
-	// so we don't touch the file needlessly and trigger eg inotify watchers.
-	// a missing or unreadable file falls through to the write.
-	existing_data, read_err := os.read_entire_file(KEYBINDINGS_FILENAME, context.temp_allocator)
-	if read_err == nil && string(existing_data) == string(json_data) {
-		return
-	}
-
-	if write_err := os.write_entire_file(KEYBINDINGS_FILENAME, json_data); write_err != nil {
-		log.warning("Couldn't write file! {:v}", write_err)
-	}
+	config_save(KEYBINDINGS_FILENAME, keybindings)
 }
 
 input_handle_digital_axis :: proc(inc_bind: Keybind, dec_bind: Keybind, ptr: ^f32) {
