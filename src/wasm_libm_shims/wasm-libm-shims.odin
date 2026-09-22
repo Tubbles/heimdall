@@ -2,15 +2,16 @@
 // intrinsics (core/math/math_basic.odin) and the wasm backend turns those into imports
 // from the "env" module. Everything else in core:math is plain Odin. Odin's own odin.js
 // supplies the same functions for the browser, here the engine does.
-package heimdall
+package heimdall_wasm_libm_shims
 
+import heimdall_wasm "../wasm"
 import "core:c"
 import "core:math"
 import wasm "module:wasm-bindings"
 import wasmtime "module:wasmtime-bindings"
 
 // The callbacks below get the math procedure to call through env.
-libm_host_functions := []Wasm_Host_Function {
+host_functions := []heimdall_wasm.Host_Function {
 	{"env", "sinf", {.F32}, {.F32}, libm_unary_f32, rawptr(math.sin_f32)},
 	{"env", "cosf", {.F32}, {.F32}, libm_unary_f32, rawptr(math.cos_f32)},
 	{"env", "expf", {.F32}, {.F32}, libm_unary_f32, rawptr(math.exp_f32)},

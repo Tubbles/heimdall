@@ -1,5 +1,6 @@
-package heimdall
+package heimdall_config
 
+import "../log"
 import "core:encoding/json"
 import "core:hash"
 import "core:os"
@@ -7,40 +8,36 @@ import "core:strings"
 import fsw "module:odin-fsw"
 // import "core:testing"
 
-CONFIG_FILENAME :: "heimdall_config.sjson"
-CONFIG_PLUGIN_FILENAME :: "heimdall_plugin_config.sjson"
-CONFIG_JSON_SPEC :: json.Specification.SJSON
+FILENAME :: "heimdall_config.sjson"
+PLUGIN_FILENAME :: "heimdall_plugin_config.sjson"
+JSON_SPEC :: json.Specification.SJSON
 
-Config_File :: struct {
-	sections: [dynamic]Config_Section,
+File :: struct {
+	sections: [dynamic]Section,
 	cfg_path: string,
 	watcher:  fsw.Watcher_File,
 	watching: bool,
 }
 
-heimdall_config_file: Config_File
-
-config_get_heimdall :: proc() -> ^Config_File {
-	return &heimdall_config_file
-}
+global_file: File
 
 // sort_maps_by_key makes the marshaled form of a parsed section deterministic,
 // which section_hash relies on (json.Object iteration order is not stable).
 opt: json.Marshal_Options = {
-	spec             = CONFIG_JSON_SPEC,
+	spec             = JSON_SPEC,
 	pretty           = true,
 	use_enum_names   = true,
 	sort_maps_by_key = true,
 }
 
-Config_On_Change :: proc(user_data: rawptr)
+On_Change :: proc(user_data: rawptr)
 
-Config_Section :: struct {
+Section :: struct {
 	key:          string,
 	target:       rawptr, // the module's live struct (T), decoded into in place
 	value_type:   typeid, // T, what json.marshal wants
 	pointer_type: typeid, // ^T, what json.unmarshal wants
-	on_change:    Config_On_Change, // optional, fired after a changed section was decoded on hot reload
+	on_change:    On_Change, // optional, fired after a changed section was decoded on hot reload
 	user_data:    rawptr,
 	last_hash:    u64,
 }
@@ -49,14 +46,14 @@ Config_Section :: struct {
 // config system (a global or long-lived allocation). Fields missing from the
 // file keep whatever `target` already holds, so initialise it with defaults.
 // `on_change` fires on hot reload only, not on the initial load in
-// config_init: apply the loaded settings in the module's own init instead.
+// init: apply the loaded settings in the module's own init instead.
 // Registering a key again (e.g. on reload) replaces the earlier entry.
-config_register_section :: proc(key: string, target: ^$T, on_change: Config_On_Change = nil, user_data: rawptr = nil) {
-	self := config_get_heimdall()
+register_section :: proc(key: string, target: ^$T, on_change: On_Change = nil, user_data: rawptr = nil) {
+	self := &global_file
 	// The `any` values for marshal/unmarshal are built at the point of use.
 	// Storing `any(target)` here would capture the address of this proc's
 	// `target` parameter, a stack slot that is dead once we return.
-	section := Config_Section {
+	section := Section {
 		key          = key,
 		target       = target,
 		value_type   = typeid_of(T),
@@ -76,32 +73,32 @@ config_register_section :: proc(key: string, target: ^$T, on_change: Config_On_C
 // Loads the file once and starts watching it. Returns false if watching failed
 // (config still loaded; just no hot reload). Safe to call again (e.g. on
 // reload): the previous watcher is destroyed first.
-config_init :: proc() -> bool {
+init :: proc() -> bool {
 	// first init main config file
-	if heimdall_config_file.watching do fsw.destroy(heimdall_config_file.watcher)
-	heimdall_config_file.cfg_path = CONFIG_FILENAME
-	config_load(&heimdall_config_file, notify = false)
-	config_save(&heimdall_config_file) // write back defaults for any missing sections/fields
+	if global_file.watching do fsw.destroy(global_file.watcher)
+	global_file.cfg_path = FILENAME
+	load(&global_file, notify = false)
+	save(&global_file) // write back defaults for any missing sections/fields
 
 	err: fsw.Error
-	heimdall_config_file.watcher, err = fsw.watch_file(CONFIG_FILENAME)
-	heimdall_config_file.watching = err == nil
-	return heimdall_config_file.watching
+	global_file.watcher, err = fsw.watch_file(FILENAME)
+	global_file.watching = err == nil
+	return global_file.watching
 }
 
-config_exit :: proc() {
-	if heimdall_config_file.watching do fsw.destroy(heimdall_config_file.watcher)
-	heimdall_config_file.watching = false
-	delete(heimdall_config_file.sections)
-	heimdall_config_file.sections = {}
+exit :: proc() {
+	if global_file.watching do fsw.destroy(global_file.watcher)
+	global_file.watching = false
+	delete(global_file.sections)
+	global_file.sections = {}
 }
 
-config_update :: proc() {
-	if !heimdall_config_file.watching do return
-	events := fsw.get_events(&heimdall_config_file.watcher, context.temp_allocator)
+update :: proc() {
+	if !global_file.watching do return
+	events := fsw.get_events(&global_file.watcher, context.temp_allocator)
 	if len(events) > 0 {
-		config_load(&heimdall_config_file, notify = true)
-		// config_save(&heimdall_config_file)
+		load(&global_file, notify = true)
+		// save(&heimdall_file)
 	}
 }
 
@@ -115,12 +112,12 @@ section_hash :: proc(v: json.Value) -> u64 {
 	return hash.fnv64a(bytes)
 }
 
-config_load :: proc(self: ^Config_File, notify: bool) -> bool {
+load :: proc(self: ^File, notify: bool) -> bool {
 	data, rerr := os.read_entire_file(self^.cfg_path, context.allocator)
 	if rerr != nil do return false
 	defer delete(data)
 
-	root, err := json.parse(data, spec = CONFIG_JSON_SPEC, parse_integers = true)
+	root, err := json.parse(data, spec = JSON_SPEC, parse_integers = true)
 	if err != nil do return false // half-written file; next event retries
 	defer json.destroy_value(root)
 
@@ -139,30 +136,30 @@ config_load :: proc(self: ^Config_File, notify: bool) -> bool {
 		if marshal_err != nil do continue
 		defer delete(bytes)
 
-		if json.unmarshal_any(bytes, any{&section.target, section.pointer_type}, spec = CONFIG_JSON_SPEC) == nil {
+		if json.unmarshal_any(bytes, any{&section.target, section.pointer_type}, spec = JSON_SPEC) == nil {
 			if notify && section.on_change != nil do section.on_change(section.user_data)
 		}
 	}
 	return true
 }
 
-config_save :: proc(self: ^Config_File) -> bool {
+save :: proc(self: ^File) -> bool {
 	doc := make(json.Object, len(self^.sections))
 	defer json.destroy_value(doc)
 
 	for &s in self^.sections {
 		bytes, merr := json.marshal(any{s.target, s.value_type}, opt)
 		if merr != nil {
-			error("config: marshal section '{}' failed: {:v}", s.key, merr)
+			log.error("config: marshal section '{}' failed: {:v}", s.key, merr)
 			return false
 		}
 		defer delete(bytes)
 
 		// parse_integers keeps ints as ints; without it they round-trip as
 		// floats and get written back as e.g. `target_fps: 120.0000000000000000`
-		v, perr := json.parse(bytes, spec = CONFIG_JSON_SPEC, parse_integers = true)
+		v, perr := json.parse(bytes, spec = JSON_SPEC, parse_integers = true)
 		if perr != nil {
-			error("config: re-parse section '{}' failed: {:v}", s.key, perr)
+			log.error("config: re-parse section '{}' failed: {:v}", s.key, perr)
 			return false
 		}
 		s.last_hash = section_hash(v)
@@ -171,13 +168,13 @@ config_save :: proc(self: ^Config_File) -> bool {
 
 	bytes, err := json.marshal(doc, opt)
 	if err != nil {
-		error("config: marshal document failed: {:v}", err)
+		log.error("config: marshal document failed: {:v}", err)
 		return false
 	}
 	defer delete(bytes)
 
 	if werr := os.write_entire_file(self^.cfg_path, bytes); werr != nil {
-		error("config: write '{}' failed: {:v}", self^.cfg_path, werr)
+		log.error("config: write '{}' failed: {:v}", self^.cfg_path, werr)
 		return false
 	}
 	return true
@@ -220,9 +217,9 @@ config_save :: proc(self: ^Config_File) -> bool {
 // 	testing.expect(t, os.write_entire_file(path, "test: { number: 42, flag: true, scale: 0.1 }") == nil)
 //
 // 	// init decodes the file into the registered struct without notifying
-// 	config_register_section("test", &section, test_count_change, &changes)
+// 	register_section("test", &section, test_count_change, &changes)
 // 	test_scribble_stack(8)
-// 	config_init(path)
+// 	init(path)
 // 	testing.expect_value(t, section.number, 42)
 // 	testing.expect_value(t, section.flag, true)
 // 	testing.expect_value(t, section.scale, 0.1)
@@ -234,23 +231,23 @@ config_save :: proc(self: ^Config_File) -> bool {
 // 	testing.expect(t, strings.contains(string(written), "scale: 0.1\n"))
 //
 // 	// the file as written back by init counts as unchanged
-// 	config_load(notify = true)
+// 	load(notify = true)
 // 	testing.expect_value(t, changes, 0)
 //
 // 	// a changed file notifies once
 // 	testing.expect(t, os.write_entire_file(path, "test: { number: 43, flag: true }") == nil)
-// 	config_load(notify = true)
-// 	config_load(notify = true)
+// 	load(notify = true)
+// 	load(notify = true)
 // 	testing.expect_value(t, section.number, 43)
 // 	testing.expect_value(t, changes, 1)
 //
 // 	// re-registration and re-init (reload) replace instead of duplicate
-// 	config_register_section("test", &section, test_count_change, &changes)
-// 	config_init(path)
+// 	register_section("test", &section, test_count_change, &changes)
+// 	init(path)
 // 	testing.expect_value(t, len(sections), 1)
 // 	testing.expect_value(t, changes, 1)
 //
-// 	config_exit()
+// 	exit()
 // 	testing.expect_value(t, len(sections), 0)
 // 	testing.expect_value(t, watching, false)
 // }

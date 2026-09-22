@@ -1,5 +1,6 @@
-package heimdall
+package heimdall_input
 
+import "../config"
 import "core:strings"
 import rl "vendor:raylib"
 
@@ -21,7 +22,7 @@ Keybindings :: struct {
 	toggle_console: Keybind,
 }
 
-Input_State :: struct {
+State :: struct {
 	raw:            bool, // raw mode ie. console active
 	move:           [2]f32, // -1..1 on each axis, [0] = horizontal, [1] = vertical
 	action:         bool,
@@ -41,24 +42,24 @@ keybindings := Keybindings {
 	toggle_console = rl.KeyboardKey.GRAVE,
 }
 
-input: Input_State
+state: State
 
-input_register_config :: proc() {
-	config_register_section("keybindings", &keybindings)
+register_config :: proc() {
+	config.register_section("keybindings", &keybindings)
 }
 
-input_init :: proc() {
+init :: proc() {
 	rl.SetExitKey(.KEY_NULL)
 }
 
 raw_text_buffer: ^strings.Builder
 
 // The caller owns the builder. Pass nil to detach.
-input_set_raw_text_buffer :: proc(buffer: ^strings.Builder) {
+set_raw_text_buffer :: proc(buffer: ^strings.Builder) {
 	raw_text_buffer = buffer
 }
 
-input_fill_raw_text_buffer :: proc(buffer: ^strings.Builder) {
+fill_raw_text_buffer :: proc(buffer: ^strings.Builder) {
 	for char := rl.GetCharPressed(); char != 0; char = rl.GetCharPressed() {
 		strings.write_rune(buffer, char)
 	}
@@ -67,7 +68,7 @@ input_fill_raw_text_buffer :: proc(buffer: ^strings.Builder) {
 	}
 }
 
-input_handle_digital_axis :: proc(inc_bind: Keybind, dec_bind: Keybind, ptr: ^f32) {
+handle_digital_axis :: proc(inc_bind: Keybind, dec_bind: Keybind, ptr: ^f32) {
 	inc: bool
 	dec: bool
 
@@ -97,7 +98,7 @@ input_handle_digital_axis :: proc(inc_bind: Keybind, dec_bind: Keybind, ptr: ^f3
 	ptr^ += dec ? -1.0 : 0.0
 }
 
-input_handle_key_pressed :: proc(bind: Keybind, ptr: ^bool) {
+handle_key_pressed :: proc(bind: Keybind, ptr: ^bool) {
 	pressed: bool
 
 	switch bind in bind {
@@ -114,7 +115,7 @@ input_handle_key_pressed :: proc(bind: Keybind, ptr: ^bool) {
 	ptr^ = pressed
 }
 
-input_handle_key_held :: proc(bind: Keybind, ptr: ^bool) {
+handle_key_held :: proc(bind: Keybind, ptr: ^bool) {
 	held: bool
 
 	switch bind in bind {
@@ -131,8 +132,8 @@ input_handle_key_held :: proc(bind: Keybind, ptr: ^bool) {
 	ptr^ = held
 }
 
-input_update :: proc() {
-	if input.raw {
+update :: proc() {
+	if state.raw {
 		// Raw mode
 		{
 			// Key pressed
@@ -144,19 +145,19 @@ input_update :: proc() {
 
 				// only allow the toggle console in raw mode
 				// {keybindings.toggle_console, &input.toggle_console},
-				{rl.KeyboardKey.ESCAPE, &input.toggle_console},
-				{rl.KeyboardKey.ENTER, &input.submit},
+				{rl.KeyboardKey.ESCAPE, &state.toggle_console},
+				{rl.KeyboardKey.ENTER, &state.submit},
 				//
 			}
 
 			for mapping in mappings {
-				input_handle_key_pressed(mapping.bind, mapping.ptr)
+				handle_key_pressed(mapping.bind, mapping.ptr)
 			}
 		}
 
 		// Skip on the closing frame so the toggle key's own rune stays out of the buffer.
-		if raw_text_buffer != nil && !input.toggle_console {
-			input_fill_raw_text_buffer(raw_text_buffer)
+		if raw_text_buffer != nil && !state.toggle_console {
+			fill_raw_text_buffer(raw_text_buffer)
 		}
 	} else {
 		// Baked mode
@@ -167,13 +168,13 @@ input_update :: proc() {
 				dec_bind: Keybind,
 				ptr:      ^f32,
 			} {
-				{keybindings.move_right, keybindings.move_left, &input.move[0]},
-				{keybindings.move_down, keybindings.move_up, &input.move[1]},
+				{keybindings.move_right, keybindings.move_left, &state.move[0]},
+				{keybindings.move_down, keybindings.move_up, &state.move[1]},
 				//
 			}
 
 			for mapping in mappings {
-				input_handle_digital_axis(mapping.inc_bind, mapping.dec_bind, mapping.ptr)
+				handle_digital_axis(mapping.inc_bind, mapping.dec_bind, mapping.ptr)
 			}
 		}
 
@@ -183,15 +184,15 @@ input_update :: proc() {
 				bind: Keybind,
 				ptr:  ^bool,
 			} {
-				{keybindings.action, &input.action},
-				{keybindings.quit, &input.quit},
-				{keybindings.toggle_console, &input.toggle_console},
-				{rl.KeyboardKey.ENTER, &input.submit},
+				{keybindings.action, &state.action},
+				{keybindings.quit, &state.quit},
+				{keybindings.toggle_console, &state.toggle_console},
+				{rl.KeyboardKey.ENTER, &state.submit},
 				//
 			}
 
 			for mapping in mappings {
-				input_handle_key_pressed(mapping.bind, mapping.ptr)
+				handle_key_pressed(mapping.bind, mapping.ptr)
 			}
 		}
 
@@ -201,17 +202,17 @@ input_update :: proc() {
 				bind: Keybind,
 				ptr:  ^bool,
 			} {
-				{keybindings.action, &input.action_held},
+				{keybindings.action, &state.action_held},
 				//
 			}
 
 			for mapping in mappings {
-				input_handle_key_held(mapping.bind, mapping.ptr)
+				handle_key_held(mapping.bind, mapping.ptr)
 			}
 		}
 	}
 
-	if input.toggle_console {
-		input.raw = !input.raw
+	if state.toggle_console {
+		state.raw = !state.raw
 	}
 }

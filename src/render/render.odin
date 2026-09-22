@@ -1,16 +1,18 @@
-package heimdall
+package heimdall_render
 
+import "../config"
+import "../console"
 import "core:c"
 import "core:strconv"
 import rl "vendor:raylib"
 
-Render_Settings :: struct {
+Settings :: struct {
 	target_fps: int,
 	vsync:      bool,
 	fullscreen: bool,
 }
 
-settings := Render_Settings {
+settings := Settings {
 	target_fps = 120,
 	vsync      = true,
 	fullscreen = true,
@@ -20,23 +22,35 @@ target: rl.RenderTexture2D
 
 source_rect, dest_rect: rl.Rectangle
 
-render_cmd := Console_Command{name = "render", run = render_proc_cmd}
-fps_cmd := Console_Command{name = "fps", run = render_set_target_fps_cmd}
-fullscreen_cmd := Console_Command{name = "fullscreen", run = render_set_fullscreen_cmd}
-vsync_cmd := Console_Command{name = "vsync", run = render_set_vsync_cmd}
+background_color := rl.WHITE
+
+cmd := console.Command {
+	name = "render",
+	run  = proc_cmd,
+}
+
+fps_cmd := console.Command {
+	name = "fps",
+	run  = set_target_fps_cmd,
+}
+
+vsync_cmd := console.Command {
+	name = "vsync",
+	run  = set_vsync_cmd,
+}
 
 on_change :: proc(user_data: rawptr) {
-	render_update_all()
+	update_all()
 }
 
-render_register_config :: proc() {
-	config_register_section("render", &settings, on_change = on_change)
+register_config :: proc() {
+	config.register_section("render", &settings, on_change = on_change)
 }
 
-render_init :: proc() {
+init :: proc() {
 	rl.SetConfigFlags({.BORDERLESS_WINDOWED_MODE})
 	rl.InitWindow(1280, 720, "Heimdall")
-	render_update_all()
+	update_all()
 
 	rl.HideCursor()
 
@@ -49,18 +63,17 @@ render_init :: proc() {
 	set_rectangles(monitor_width, monitor_height, int(game_width), int(game_height), &source_rect, &dest_rect)
 	target = rl.LoadRenderTexture(c.int(source_rect.width), -c.int(source_rect.height))
 
-	console_register_command(render_cmd)
-	console_register_command(fps_cmd)
-	console_register_command(fullscreen_cmd)
-	console_register_command(vsync_cmd)
+	console.register_command(cmd)
+	console.register_command(fps_cmd)
+	console.register_command(vsync_cmd)
 }
 
-render_begin :: proc() {
+begin :: proc() {
 	rl.BeginTextureMode(target)
 	rl.ClearBackground(background_color)
 }
 
-render_end :: proc() {
+end :: proc() {
 	rl.EndTextureMode()
 	rl.BeginDrawing()
 	rl.DrawTexturePro(target.texture, source_rect, dest_rect, rl.Vector2{0.0, 0.0}, 0.0, background_color)
@@ -88,23 +101,23 @@ set_rectangles :: proc(
 	dest_rect^.height = f32(int((f32(game_height) * resizeRatio)))
 }
 
-render_set_target_fps :: proc(fps: int) {
+set_target_fps :: proc(fps: int) {
 	settings.target_fps = fps
-	render_update_target_fps()
-	config_save(&heimdall_config_file)
+	update_target_fps()
+	config.save(&config.global_file)
 }
 
-render_update_target_fps :: proc() {
+update_target_fps :: proc() {
 	rl.SetTargetFPS(i32(settings.target_fps))
 }
 
-render_set_vsync :: proc(vsync: bool) {
+set_vsync :: proc(vsync: bool) {
 	settings.vsync = vsync
-	render_update_vsync()
-	config_save(&heimdall_config_file)
+	update_vsync()
+	config.save(&config.global_file)
 }
 
-render_update_vsync :: proc() {
+update_vsync :: proc() {
 	if settings.vsync {
 		rl.SetWindowState({.VSYNC_HINT})
 	} else {
@@ -112,13 +125,13 @@ render_update_vsync :: proc() {
 	}
 }
 
-render_set_fullscreen :: proc(fullscreen: bool) {
+set_fullscreen :: proc(fullscreen: bool) {
 	settings.fullscreen = fullscreen
-	render_update_fullscreen()
-	config_save(&heimdall_config_file)
+	update_fullscreen()
+	config.save(&config.global_file)
 }
 
-render_update_fullscreen :: proc() {
+update_fullscreen :: proc() {
 	if settings.fullscreen {
 		rl.SetWindowState({.FULLSCREEN_MODE})
 	} else {
@@ -126,75 +139,55 @@ render_update_fullscreen :: proc() {
 	}
 }
 
-render_update_all :: proc() {
-	render_update_fullscreen()
-	render_update_target_fps()
-	render_update_vsync()
+update_all :: proc() {
+	update_fullscreen()
+	update_target_fps()
+	update_vsync()
 }
 
-render_proc_cmd :: proc(args: []string) {
+proc_cmd :: proc(args: []string) {
 	if len(args) > 0 {
-		console_printfln("Usage: %s", render_cmd.name)
+		console.printfln("Usage: %s", cmd.name)
 		return
 	}
 
-	console_printfln("%s: {:v}", render_cmd.name, settings)
+	console.printfln("%s: {:v}", cmd.name, settings)
 }
 
-render_set_target_fps_cmd :: proc(args: []string) {
+set_target_fps_cmd :: proc(args: []string) {
 	if len(args) > 1 {
-		console_printfln("Usage: %s [target-fps]", fps_cmd.name)
+		console.printfln("Usage: %s [target-fps]", fps_cmd.name)
 		return
 	}
 
 	if len(args) == 1 {
 		target_fps, ok := strconv.parse_int(args[0])
 		if !ok || target_fps < 0 {
-			console_printfln("Invalid fps value '{}', expected a non-negative integer", args[0])
+			console.printfln("Invalid fps value '{}', expected a non-negative integer", args[0])
 			return
 		}
-		render_set_target_fps(target_fps)
+		set_target_fps(target_fps)
 	} else {
-		console_printfln("%s: {:v}", fps_cmd.name, settings.target_fps)
+		console.printfln("%s: {:v}", fps_cmd.name, settings.target_fps)
 	}
 }
 
-render_set_vsync_cmd :: proc(args: []string) {
+set_vsync_cmd :: proc(args: []string) {
 	if len(args) > 1 {
-		console_printfln("Usage: %s [on|off]", fps_cmd.name)
+		console.printfln("Usage: %s [on|off]", fps_cmd.name)
 		return
 	}
 
 	if len(args) == 1 {
 		switch args[0] {
 		case "on", "true", "1":
-			render_set_vsync(true)
+			set_vsync(true)
 		case "off", "false", "0":
-			render_set_vsync(false)
+			set_vsync(false)
 		case:
-			console_printfln("Unknown vsync value '{}', expected on or off", args[0])
+			console.printfln("Unknown vsync value '{}', expected on or off", args[0])
 		}
 	} else {
-		console_printfln("%s: {:v}", fps_cmd.name, settings.vsync)
-	}
-}
-
-render_set_fullscreen_cmd :: proc(args: []string) {
-	if len(args) > 1 {
-		console_printfln("Usage: %s [on|off]", fullscreen_cmd.name)
-		return
-	}
-
-	if len(args) == 1 {
-		switch args[0] {
-		case "on", "true", "1":
-			render_set_fullscreen(true)
-		case "off", "false", "0":
-			render_set_fullscreen(false)
-		case:
-			console_printfln("Unknown fullscreen value '{}', expected on or off", args[0])
-		}
-	} else {
-		console_printfln("%s: {:v}", fullscreen_cmd.name, settings.fullscreen)
+		console.printfln("%s: {:v}", fps_cmd.name, settings.vsync)
 	}
 }

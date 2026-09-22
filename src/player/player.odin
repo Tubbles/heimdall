@@ -1,5 +1,6 @@
-package heimdall
+package heimdall_player
 
+import "../input"
 import rl "vendor:raylib"
 
 Player :: struct {
@@ -15,7 +16,7 @@ Player :: struct {
 
 player: Player
 
-player_init :: proc() {
+init :: proc() {
 	player.transform.translation.xy = {10.0, 20.0}
 	player.velocity.translation.xy = {0.0, 0.0}
 	player.speed = 400.0
@@ -23,21 +24,21 @@ player_init :: proc() {
 	player.color = rl.RED
 }
 
-player_update :: proc() {
-	player.velocity.translation.x = input.move.x * player.speed
-	player.velocity.translation.y = input.move.y * player.speed
+update :: proc() {
+	player.velocity.translation.x = input.state.move.x * player.speed
+	player.velocity.translation.y = input.state.move.y * player.speed
 	player.transform.translation.x += player.velocity.translation.x * rl.GetFrameTime()
 	player.transform.translation.y += player.velocity.translation.y * rl.GetFrameTime()
 }
 
-player_draw :: proc() {
+draw :: proc() {
 	rl.DrawRectangleV(
 		player.transform.translation.xy - player.transform.scale.xy / 2,
 		player.transform.scale.xy,
 		player.color,
 	)
 
-	if input.action_held {
+	if input.state.action_held {
 		start_position: rl.Vector2 = player.transform.translation.xy
 		end_position: rl.Vector2 = {250.0, 250.0}
 		rl.DrawLineEx(start_position, end_position, thick = 2.0, color = rl.RED)

@@ -1,5 +1,9 @@
-package heimdall
+package heimdall_wasm_host_procs
 
+import "../log"
+import "../plugin"
+import "../render"
+import heimdall_wasm "../wasm"
 import "base:runtime"
 import "core:c"
 import wasm "module:wasm-bindings"
@@ -8,7 +12,7 @@ import rl "vendor:raylib"
 
 // The game API under the "host" module, one entry per declaration in module/waylib.
 // Wasm passes structs and strings by pointer, so those arguments arrive as i32 offsets.
-game_host_functions := []Wasm_Host_Function {
+host_functions := []heimdall_wasm.Host_Function {
 	{"heimdall", "trace", {.I32}, {}, wasm_host_trace_trace, nil},
 	{"heimdall", "debug", {.I32}, {}, wasm_host_trace_debug, nil},
 	{"heimdall", "info", {.I32}, {}, wasm_host_trace_info, nil},
@@ -29,13 +33,13 @@ wasm_host_trace_trace :: proc "c" (
 ) -> ^wasm.Trap {
 	context = runtime.default_context()
 
-	message, ok := plugin_guest_string(caller, args[0].of.i32)
+	message, ok := plugin.guest_string(caller, args[0].of.i32)
 
 	if !ok {
 		return wasmtime.trap_from_string("log: message out of bounds")
 	}
 
-	trace("[plugin] {}", message)
+	log.trace("[plugin] {}", message)
 
 	return nil
 }
@@ -50,13 +54,13 @@ wasm_host_trace_debug :: proc "c" (
 ) -> ^wasm.Trap {
 	context = runtime.default_context()
 
-	message, ok := plugin_guest_string(caller, args[0].of.i32)
+	message, ok := plugin.guest_string(caller, args[0].of.i32)
 
 	if !ok {
 		return wasmtime.trap_from_string("log: message out of bounds")
 	}
 
-	debug("[plugin] {}", message)
+	log.debug("[plugin] {}", message)
 
 	return nil
 }
@@ -71,13 +75,13 @@ wasm_host_trace_info :: proc "c" (
 ) -> ^wasm.Trap {
 	context = runtime.default_context()
 
-	message, ok := plugin_guest_string(caller, args[0].of.i32)
+	message, ok := plugin.guest_string(caller, args[0].of.i32)
 
 	if !ok {
 		return wasmtime.trap_from_string("log: message out of bounds")
 	}
 
-	info("[plugin] {}", message)
+	log.info("[plugin] {}", message)
 
 	return nil
 }
@@ -92,13 +96,13 @@ wasm_host_trace_warning :: proc "c" (
 ) -> ^wasm.Trap {
 	context = runtime.default_context()
 
-	message, ok := plugin_guest_string(caller, args[0].of.i32)
+	message, ok := plugin.guest_string(caller, args[0].of.i32)
 
 	if !ok {
 		return wasmtime.trap_from_string("log: message out of bounds")
 	}
 
-	warning("[plugin] {}", message)
+	log.warning("[plugin] {}", message)
 
 	return nil
 }
@@ -113,13 +117,13 @@ wasm_host_trace_error :: proc "c" (
 ) -> ^wasm.Trap {
 	context = runtime.default_context()
 
-	message, ok := plugin_guest_string(caller, args[0].of.i32)
+	message, ok := plugin.guest_string(caller, args[0].of.i32)
 
 	if !ok {
 		return wasmtime.trap_from_string("log: message out of bounds")
 	}
 
-	error("[plugin] {}", message)
+	log.error("[plugin] {}", message)
 
 	return nil
 }
@@ -134,13 +138,13 @@ wasm_host_trace_fatal :: proc "c" (
 ) -> ^wasm.Trap {
 	context = runtime.default_context()
 
-	message, ok := plugin_guest_string(caller, args[0].of.i32)
+	message, ok := plugin.guest_string(caller, args[0].of.i32)
 
 	if !ok {
 		return wasmtime.trap_from_string("log: message out of bounds")
 	}
 
-	fatal("[plugin] {}", message)
+	log.fatal("[plugin] {}", message)
 
 	return nil
 }
@@ -155,9 +159,9 @@ wasm_host_draw_rectangle_v :: proc "c" (
 ) -> ^wasm.Trap {
 	context = runtime.default_context()
 
-	position, ok_position := plugin_guest_value(caller, args[0].of.i32, rl.Vector2)
-	size, ok_size := plugin_guest_value(caller, args[1].of.i32, rl.Vector2)
-	color, ok_color := plugin_guest_value(caller, args[2].of.i32, rl.Color)
+	position, ok_position := plugin.guest_value(caller, args[0].of.i32, rl.Vector2)
+	size, ok_size := plugin.guest_value(caller, args[1].of.i32, rl.Vector2)
+	color, ok_color := plugin.guest_value(caller, args[2].of.i32, rl.Color)
 
 	if !(ok_position && ok_size && ok_color) {
 		return wasmtime.trap_from_string("DrawRectangleV: argument out of bounds")
@@ -178,12 +182,12 @@ wasm_host_set_background_color :: proc "c" (
 ) -> ^wasm.Trap {
 	context = runtime.default_context()
 
-	color, ok_color := plugin_guest_value(caller, args[0].of.i32, rl.Color)
+	color, ok_color := plugin.guest_value(caller, args[0].of.i32, rl.Color)
 	if !(ok_color) {
 		return wasmtime.trap_from_string("set_background_color: argument out of bounds")
 	}
 
-	background_color = color
+	render.background_color = color
 
 	return nil
 }
