@@ -2,9 +2,8 @@
 // and the helpers host functions use to read the plugin's memory. The game API a plugin
 // imports, declared in module/waylib, is implemented at the bottom. wasm.odin owns the
 // engine and linker these build on and the list of plugins.
-package plugins
+package heimdall
 
-import "../log"
 import "base:runtime"
 import "core:c"
 import "core:mem"
@@ -28,7 +27,7 @@ Plugin :: struct {
 // Reads, compiles, instantiates and initialises the plugin at path. The engine compiles
 // it and the linker supplies its imports; the plugin gets a store of its own so it can be
 // unloaded without touching the others.
-load :: proc(
+plugin_load :: proc(
 	plugin: ^Plugin,
 	engine: ^wasm.Engine,
 	linker: ^wasmtime.Linker,
@@ -36,7 +35,7 @@ load :: proc(
 ) -> bool {
 	wasm_bytes, read_error := os.read_entire_file(path, context.temp_allocator)
 	if read_error != nil {
-		log.warning("Failed to read plugin '{}': {}", path, read_error)
+		warning("Failed to read plugin '{}': {}", path, read_error)
 		return false
 	}
 
@@ -45,17 +44,17 @@ load :: proc(
 	plugin.ctx = wasmtime.store_context(plugin.store)
 
 	ok :=
-		compile(plugin, engine, wasm_bytes) &&
-		instantiate(plugin, linker) &&
-		find_exports(plugin) &&
-		call(plugin, &plugin.init, {})
+		plugin_compile(plugin, engine, wasm_bytes) &&
+		plugin_instantiate(plugin, linker) &&
+		plugin_find_exports(plugin) &&
+		plugin_call(plugin, &plugin.init, {})
 	if !ok {
-		unload(plugin)
+		plugin_unload(plugin)
 	}
 	return ok
 }
 
-compile :: proc(plugin: ^Plugin, engine: ^wasm.Engine, wasm_bytes: []byte) -> bool {
+plugin_compile :: proc(plugin: ^Plugin, engine: ^wasm.Engine, wasm_bytes: []byte) -> bool {
 	error := wasmtime.module_new(
 		engine,
 		raw_data(wasm_bytes),
@@ -63,7 +62,7 @@ compile :: proc(plugin: ^Plugin, engine: ^wasm.Engine, wasm_bytes: []byte) -> bo
 		&plugin.module,
 	)
 	if error != nil {
-		log.warning(
+		warning(
 			"Failed to compile plugin '{}': {}",
 			plugin.path,
 			wasmtime.take_error_message(error, context.temp_allocator),
@@ -73,7 +72,7 @@ compile :: proc(plugin: ^Plugin, engine: ^wasm.Engine, wasm_bytes: []byte) -> bo
 	return true
 }
 
-instantiate :: proc(plugin: ^Plugin, linker: ^wasmtime.Linker) -> bool {
+plugin_instantiate :: proc(plugin: ^Plugin, linker: ^wasmtime.Linker) -> bool {
 	trap: ^wasm.Trap
 	error := wasmtime.linker_instantiate(
 		linker,
@@ -83,7 +82,7 @@ instantiate :: proc(plugin: ^Plugin, linker: ^wasmtime.Linker) -> bool {
 		&trap,
 	)
 	if error != nil {
-		log.warning(
+		warning(
 			"Failed to instantiate plugin '{}': {}",
 			plugin.path,
 			wasmtime.take_error_message(error, context.temp_allocator),
@@ -91,7 +90,7 @@ instantiate :: proc(plugin: ^Plugin, linker: ^wasmtime.Linker) -> bool {
 		return false
 	}
 	if trap != nil {
-		log.warning(
+		warning(
 			"Plugin '{}' trapped during instantiation: {}",
 			plugin.path,
 			wasm.take_trap_message(trap, context.temp_allocator),
@@ -102,7 +101,7 @@ instantiate :: proc(plugin: ^Plugin, linker: ^wasmtime.Linker) -> bool {
 	return true
 }
 
-find_exports :: proc(plugin: ^Plugin) -> bool {
+plugin_find_exports :: proc(plugin: ^Plugin) -> bool {
 	entries := [?]struct {
 		name: string,
 		func: ^wasmtime.Func,
@@ -112,14 +111,14 @@ find_exports :: proc(plugin: ^Plugin) -> bool {
 		found: bool
 		entry.func^, found = wasmtime.instance_func(plugin.ctx, &plugin.instance, entry.name)
 		if !found {
-			log.warning("Plugin '{}' does not export '{}'", plugin.path, entry.name)
+			warning("Plugin '{}' does not export '{}'", plugin.path, entry.name)
 			return false
 		}
 	}
 	return true
 }
 
-unload :: proc(plugin: ^Plugin) {
+plugin_unload :: proc(plugin: ^Plugin) {
 	if plugin.module != nil {
 		wasmtime.module_delete(plugin.module)
 	}
@@ -131,7 +130,7 @@ unload :: proc(plugin: ^Plugin) {
 
 // Calls an exported plugin procedure that returns nothing. A trap or error disables the
 // plugin until the next reload so a broken plugin cannot warn on every frame.
-call :: proc(plugin: ^Plugin, function: ^wasmtime.Func, args: []wasmtime.Val) -> bool {
+plugin_call :: proc(plugin: ^Plugin, function: ^wasmtime.Func, args: []wasmtime.Val) -> bool {
 	if !plugin.loaded {
 		return false
 	}
@@ -146,7 +145,7 @@ call :: proc(plugin: ^Plugin, function: ^wasmtime.Func, args: []wasmtime.Val) ->
 		&trap,
 	)
 	if error != nil {
-		log.warning(
+		warning(
 			"Plugin '{}' call failed: {}",
 			plugin.path,
 			wasmtime.take_error_message(error, context.temp_allocator),
@@ -155,7 +154,7 @@ call :: proc(plugin: ^Plugin, function: ^wasmtime.Func, args: []wasmtime.Val) ->
 		return false
 	}
 	if trap != nil {
-		log.warning(
+		warning(
 			"Plugin '{}' trapped: {}",
 			plugin.path,
 			wasm.take_trap_message(trap, context.temp_allocator),
@@ -166,16 +165,16 @@ call :: proc(plugin: ^Plugin, function: ^wasmtime.Func, args: []wasmtime.Val) ->
 	return true
 }
 
-update_plugin :: proc(plugin: ^Plugin, delta_time: f32) {
-	call(plugin, &plugin.update, {wasmtime.val_f32(delta_time)})
+plugin_update :: proc(plugin: ^Plugin, delta_time: f32) {
+	plugin_call(plugin, &plugin.update, {wasmtime.val_f32(delta_time)})
 }
 
-draw_plugin :: proc(plugin: ^Plugin) {
-	call(plugin, &plugin.draw, {})
+plugin_draw :: proc(plugin: ^Plugin) {
+	plugin_call(plugin, &plugin.draw, {})
 }
 
 // A bounds-checked view of a buffer the plugin passed as pointer and length.
-guest_bytes :: proc(
+plugin_guest_bytes :: proc(
 	caller: ^wasmtime.Caller,
 	pointer, length: i32,
 ) -> (
@@ -192,7 +191,7 @@ guest_bytes :: proc(
 
 // Reads a value the plugin passed by pointer, which is how wasm passes structs. Both
 // sides are little endian and the raylib types have the same layout in both.
-guest_value :: proc(
+plugin_guest_value :: proc(
 	caller: ^wasmtime.Caller,
 	pointer: i32,
 	$Type: typeid,
@@ -200,26 +199,26 @@ guest_value :: proc(
 	value: Type,
 	ok: bool,
 ) {
-	bytes := guest_bytes(caller, pointer, i32(size_of(Type))) or_return
+	bytes := plugin_guest_bytes(caller, pointer, i32(size_of(Type))) or_return
 	mem.copy_non_overlapping(&value, raw_data(bytes), size_of(Type))
 	return value, true
 }
 
 // An Odin string header as laid out in the plugin's 32-bit memory.
-Guest_String :: struct {
+Plugin_Guest_String :: struct {
 	data:   u32,
 	length: u32,
 }
 
 // Reads a string the plugin passed by pointer.
-guest_string :: proc(
+plugin_guest_string :: proc(
 	caller: ^wasmtime.Caller,
 	pointer: i32,
 ) -> (
 	text: string,
 	ok: bool,
 ) {
-	header := guest_value(caller, pointer, Guest_String) or_return
-	bytes := guest_bytes(caller, i32(header.data), i32(header.length)) or_return
+	header := plugin_guest_value(caller, pointer, Plugin_Guest_String) or_return
+	bytes := plugin_guest_bytes(caller, i32(header.data), i32(header.length)) or_return
 	return string(bytes), true
 }

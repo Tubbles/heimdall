@@ -12,6 +12,10 @@ import "base:runtime"
 import wl "module:waylib"
 import "heimdall:heimdall"
 
+debug :: heimdall.debug
+info :: heimdall.info
+warning :: heimdall.warning
+
 ORBIT_CENTER :: wl.Vector2{250, 250}
 ORBIT_RADIUS :: 100.0
 MARKER_SIZE :: 16.0
@@ -28,7 +32,7 @@ init :: proc "c" () {
 	context = runtime.default_context()
 	runtime._startup_runtime()
 	marker = {}
-	heimdall.log(.INFO, "hello from plugin")
+	info("hello from plugin")
 }
 
 @(export)

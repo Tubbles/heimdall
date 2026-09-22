@@ -1,0 +1,32 @@
+keybindings: {
+	action: [
+		"E"
+		"SPACE"
+	]
+	move_down: [
+		"S"
+		"DOWN"
+	]
+	move_left: [
+		"A"
+		"LEFT"
+	]
+	move_right: [
+		"D"
+		"RIGHT"
+	]
+	move_up: [
+		"W"
+		"UP"
+	]
+	quit: [
+		"Q"
+		"ESCAPE"
+	]
+	toggle_console: "GRAVE"
+}
+render: {
+	fullscreen: false
+	target_fps: 120
+	vsync: true
+}

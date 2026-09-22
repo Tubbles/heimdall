@@ -11,10 +11,18 @@ plugin:
 run: plugin
 	odin run src -collection:module=module
 
+.PHONY: test
+test: test-plugin
+	odin test src -collection:module=module
+
+.PHONY: test-plugin
+test-plugin:
+	cd plugin && $(MAKE) test
+
 .PHONY: clean
 clean: clean-plugin
 	rm -fr build
 
 .PHONY: clean-plugin
 clean-plugin:
-	rm -fr plugin/build
+	cd plugin && $(MAKE) clean

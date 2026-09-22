@@ -4,14 +4,13 @@
 // supplies the same functions for the browser, here the engine does.
 package heimdall
 
-import "./plugins"
 import "core:c"
 import "core:math"
 import wasm "module:wasm-bindings"
 import wasmtime "module:wasmtime-bindings"
 
 // The callbacks below get the math procedure to call through env.
-libm_host_functions := []plugins.Host_Function {
+libm_host_functions := []Wasm_Host_Function {
 	{"env", "sinf", {.F32}, {.F32}, libm_unary_f32, rawptr(math.sin_f32)},
 	{"env", "cosf", {.F32}, {.F32}, libm_unary_f32, rawptr(math.cos_f32)},
 	{"env", "expf", {.F32}, {.F32}, libm_unary_f32, rawptr(math.exp_f32)},

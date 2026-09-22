@@ -7,3 +7,6 @@
 [submodule "module/wasmtime-bindings"]
 	path = module/wasmtime-bindings
 	url = git@github.com:Tubbles/odin-wasmtime-bindings.git
+[submodule "module/odin-fsw"]
+	path = module/odin-fsw
+	url = https://github.com/thetarnav/odin-fsw.git

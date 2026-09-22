@@ -12,7 +12,9 @@ import "base:runtime"
 import "heimdall:heimdall"
 import wl "module:waylib"
 
-log :: heimdall.log
+debug :: heimdall.debug
+info :: heimdall.info
+warning :: heimdall.warning
 
 ORBIT_CENTER :: wl.Vector2{250, 250}
 ORBIT_RADIUS :: 100.0
@@ -33,8 +35,8 @@ init :: proc "c" () {
 
 	// begin user code
 	marker = {}
-	log(.INFO, "hello from plugin")
-	heimdall.set_background_color(wl.WHITE)
+	info("hello from plugin")
+	// heimdall.set_background_color(wl.WHITE)
 }
 
 @(export)
