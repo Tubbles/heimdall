@@ -1,6 +1,7 @@
 package heimdall
 
-import "./cmd_fullscreen"
+import cmd_fullscreen "./cmd/fullscreen"
+import cmd_help "./cmd/help"
 import "./config"
 import "./console"
 import "./input"
@@ -28,6 +29,7 @@ init_systems :: proc() {
 	config.init()
 
 	// commands
+	cmd_help.init()
 	cmd_fullscreen.init()
 
 	// window

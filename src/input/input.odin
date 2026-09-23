@@ -30,6 +30,8 @@ State :: struct {
 	quit:           bool,
 	toggle_console: bool,
 	submit:         bool, // raw mode only: enter was pressed this frame
+	console_next:   bool,
+	console_prev:   bool,
 }
 
 keybindings := Keybindings {
@@ -54,11 +56,6 @@ init :: proc() {
 
 raw_text_buffer: ^strings.Builder
 
-// The caller owns the builder. Pass nil to detach.
-set_raw_text_buffer :: proc(buffer: ^strings.Builder) {
-	raw_text_buffer = buffer
-}
-
 fill_raw_text_buffer :: proc(buffer: ^strings.Builder) {
 	for char := rl.GetCharPressed(); char != 0; char = rl.GetCharPressed() {
 		strings.write_rune(buffer, char)
@@ -66,6 +63,10 @@ fill_raw_text_buffer :: proc(buffer: ^strings.Builder) {
 	if rl.IsKeyPressed(.BACKSPACE) || rl.IsKeyPressedRepeat(.BACKSPACE) {
 		strings.pop_rune(buffer)
 	}
+}
+
+set_raw_cursor_position :: proc() {
+	//
 }
 
 handle_digital_axis :: proc(inc_bind: Keybind, dec_bind: Keybind, ptr: ^f32) {
