@@ -1,16 +1,16 @@
-package heimdall_cmd_fullscreen
+package heimdall_cmd_fps
 
 import "../../console"
 import "../../flags_helpers"
 import "../../render"
 
 Args :: struct {
-	state: flags_helpers.Toggle `args:"pos=0" usage:"turn fullscreen 'on' or 'off'"`,
+	target_fps: int `args:"pos=0" usage:"the target fps, set to negative for unlimited fps"`,
 }
 
 cmd := console.Command {
-	name       = "fullscreen",
-	short_help = "set or view the fullscreen setting",
+	name       = "fps",
+	short_help = "set or view the target fps setting",
 	run        = run,
 }
 
@@ -21,11 +21,11 @@ init :: proc() {
 
 run :: proc(args: []string) {
 	if len(args) == 0 {
-		console.printfln("{:v}", render.settings.fullscreen)
+		console.printfln("{:v}", render.settings.target_fps)
 	} else {
 		parsed_args: Args
 		if flags_helpers.parse(&parsed_args, args, cmd.help) {
-			render.set_fullscreen(bool(parsed_args.state))
+			render.set_target_fps(parsed_args.target_fps)
 		}
 	}
 }

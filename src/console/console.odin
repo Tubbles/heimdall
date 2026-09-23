@@ -111,7 +111,7 @@ update :: proc() {
 
 		words := strings.fields(line, context.temp_allocator)
 		if len(words) > 0 && !run_command(words[0], words[1:]) {
-			log.warning("Unknown command '{}'", words[0])
+			printfln("Unknown command '{}'", words[0])
 		}
 
 		strings.builder_reset(&buffer_line)

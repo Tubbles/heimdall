@@ -1,10 +1,14 @@
 package heimdall
 
+import cmd_fps "./cmd/fps"
 import cmd_fullscreen "./cmd/fullscreen"
 import cmd_help "./cmd/help"
+import cmd_render "./cmd/render"
+import cmd_vsync "./cmd/vsync"
 import "./config"
 import "./console"
 import "./input"
+import "./flags_helpers"
 import "./json_marshaler"
 import "./log"
 import "./player"
@@ -29,8 +33,12 @@ init_systems :: proc() {
 	config.init()
 
 	// commands
-	cmd_help.init()
+	flags_helpers.init()
+	cmd_fps.init()
 	cmd_fullscreen.init()
+	cmd_help.init()
+	cmd_render.init()
+	cmd_vsync.init()
 
 	// window
 	render.init() // sets up the window

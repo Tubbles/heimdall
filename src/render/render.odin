@@ -24,21 +24,6 @@ source_rect, dest_rect: rl.Rectangle
 
 background_color := rl.WHITE
 
-cmd := console.Command {
-	name = "render",
-	run  = proc_cmd,
-}
-
-fps_cmd := console.Command {
-	name = "fps",
-	run  = set_target_fps_cmd,
-}
-
-vsync_cmd := console.Command {
-	name = "vsync",
-	run  = set_vsync_cmd,
-}
-
 on_change :: proc(user_data: rawptr) {
 	update_all()
 }
@@ -62,10 +47,6 @@ init :: proc() {
 	game_height := f32(monitor_height) / pixel_size
 	set_rectangles(monitor_width, monitor_height, int(game_width), int(game_height), &source_rect, &dest_rect)
 	target = rl.LoadRenderTexture(c.int(source_rect.width), -c.int(source_rect.height))
-
-	console.register_command(cmd)
-	console.register_command(fps_cmd)
-	console.register_command(vsync_cmd)
 }
 
 begin :: proc() {
@@ -143,51 +124,4 @@ update_all :: proc() {
 	update_fullscreen()
 	update_target_fps()
 	update_vsync()
-}
-
-proc_cmd :: proc(args: []string) {
-	if len(args) > 0 {
-		console.printfln("Usage: %s", cmd.name)
-		return
-	}
-
-	console.printfln("%s: {:v}", cmd.name, settings)
-}
-
-set_target_fps_cmd :: proc(args: []string) {
-	if len(args) > 1 {
-		console.printfln("Usage: %s [target-fps]", fps_cmd.name)
-		return
-	}
-
-	if len(args) == 1 {
-		target_fps, ok := strconv.parse_int(args[0])
-		if !ok || target_fps < 0 {
-			console.printfln("Invalid fps value '{}', expected a non-negative integer", args[0])
-			return
-		}
-		set_target_fps(target_fps)
-	} else {
-		console.printfln("%s: {:v}", fps_cmd.name, settings.target_fps)
-	}
-}
-
-set_vsync_cmd :: proc(args: []string) {
-	if len(args) > 1 {
-		console.printfln("Usage: %s [on|off]", fps_cmd.name)
-		return
-	}
-
-	if len(args) == 1 {
-		switch args[0] {
-		case "on", "true", "1":
-			set_vsync(true)
-		case "off", "false", "0":
-			set_vsync(false)
-		case:
-			console.printfln("Unknown vsync value '{}', expected on or off", args[0])
-		}
-	} else {
-		console.printfln("%s: {:v}", fps_cmd.name, settings.vsync)
-	}
 }
